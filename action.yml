@@ -32,7 +32,10 @@ runs:
           ~/.cargo/registry
           ~/.cargo/git
           ${{ github.action_path }}/target
-        key: skref-${{ runner.os }}-${{ hashFiles(format('{0}/Cargo.lock', github.action_path)) }}
+        # hashFiles() can only read inside GITHUB_WORKSPACE, but the action's
+        # Cargo.lock lives under github.action_path (outside it). The built
+        # skref version is fixed per action ref, so key on OS + ref instead.
+        key: skref-${{ runner.os }}-${{ github.action_ref || 'local' }}
 
     - name: Build and install skref
       shell: bash
