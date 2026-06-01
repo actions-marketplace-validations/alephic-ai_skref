@@ -5,6 +5,10 @@ on:
     branches: [main, master]
   pull_request:
 
+# Least privilege: this workflow only reads the repository.
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
