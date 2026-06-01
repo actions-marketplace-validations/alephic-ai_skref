@@ -1,0 +1,31 @@
+[package]
+name = "skref"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Reference implementation of the Agent Skills tooling: validate, read-properties, and to-prompt for SKILL.md skills"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/alephic-ai/skref"
+homepage = "https://github.com/alephic-ai/skref"
+keywords = ["agent", "skills", "skill", "cli", "validation"]
+categories = ["command-line-utilities", "development-tools"]
+documentation = "https://docs.rs/skref"
+
+# Library + binary share the same crate name.
+[lib]
+name = "skref"
+path = "src/lib.rs"
+
+[[bin]]
+name = "skref"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+serde_yaml = "0.9"
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+tempfile = "3"

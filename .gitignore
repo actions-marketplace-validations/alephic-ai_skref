@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# Python artifacts from sample skill scripts
+__pycache__/
+*.pyc

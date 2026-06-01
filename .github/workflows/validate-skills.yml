@@ -1,0 +1,38 @@
+name: Validate skills
+
+# Demonstrates the skref action. Copy this into any repository to validate its
+# own skills: point `path` at the directory holding your skill folders and
+# replace `./` in `uses:` with `alephic-ai/skref@v1`.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate sample skills (should pass)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate valid sample skills
+        uses: ./
+        with:
+          path: sample-skills
+          fail-on-error: "true"
+          to-prompt: "true"
+
+  detect-invalid:
+    name: Detect invalid skills (report only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Report on intentionally-invalid skills
+        uses: ./
+        with:
+          path: examples/invalid-skills
+          # These fixtures are intentionally broken; report without failing.
+          fail-on-error: "false"

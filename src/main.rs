@@ -1,0 +1,115 @@
+//! CLI for the `skref` library — a Rust port of `skills-ref`.
+
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+
+use clap::{Parser, Subcommand};
+
+use skref::{read_properties, to_prompt, validate};
+
+/// Reference library for Agent Skills.
+#[derive(Parser)]
+#[command(name = "skref", version, about, long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Validate a skill directory.
+    ///
+    /// Checks that the skill has a valid SKILL.md with proper frontmatter,
+    /// correct naming conventions, and required fields.
+    Validate {
+        /// Path to a skill directory (or directly to its SKILL.md).
+        skill_path: PathBuf,
+    },
+
+    /// Read and print skill properties as JSON.
+    ReadProperties {
+        /// Path to a skill directory (or directly to its SKILL.md).
+        skill_path: PathBuf,
+    },
+
+    /// Generate `<available_skills>` XML for agent prompts.
+    ToPrompt {
+        /// One or more skill directories (or paths to SKILL.md files).
+        #[arg(required = true)]
+        skill_paths: Vec<PathBuf>,
+    },
+}
+
+/// Whether `path` points directly to a `SKILL.md`/`skill.md` file.
+fn is_skill_md_file(path: &Path) -> bool {
+    path.is_file()
+        && path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_lowercase() == "skill.md")
+            .unwrap_or(false)
+}
+
+/// If `path` is a SKILL.md file, return its parent directory; otherwise return
+/// `path` unchanged.
+fn resolve_skill_path(path: &Path) -> PathBuf {
+    if is_skill_md_file(path) {
+        path.parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| path.to_path_buf())
+    } else {
+        path.to_path_buf()
+    }
+}
+
+fn cmd_validate(skill_path: &Path) -> ExitCode {
+    let skill_path = resolve_skill_path(skill_path);
+    let errors = validate(&skill_path);
+
+    if errors.is_empty() {
+        println!("Valid skill: {}", skill_path.display());
+        ExitCode::SUCCESS
+    } else {
+        eprintln!("Validation failed for {}:", skill_path.display());
+        for error in &errors {
+            eprintln!("  - {error}");
+        }
+        ExitCode::FAILURE
+    }
+}
+
+fn cmd_read_properties(skill_path: &Path) -> ExitCode {
+    let skill_path = resolve_skill_path(skill_path);
+    match read_properties(&skill_path) {
+        Ok(props) => {
+            println!("{}", props.to_json());
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("Error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn cmd_to_prompt(skill_paths: &[PathBuf]) -> ExitCode {
+    let resolved: Vec<PathBuf> = skill_paths.iter().map(|p| resolve_skill_path(p)).collect();
+    match to_prompt(&resolved) {
+        Ok(output) => {
+            println!("{output}");
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("Error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn main() -> ExitCode {
+    let cli = Cli::parse();
+    match cli.command {
+        Command::Validate { skill_path } => cmd_validate(&skill_path),
+        Command::ReadProperties { skill_path } => cmd_read_properties(&skill_path),
+        Command::ToPrompt { skill_paths } => cmd_to_prompt(&skill_paths),
+    }
+}

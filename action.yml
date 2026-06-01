@@ -1,0 +1,85 @@
+name: "skref — validate Agent Skills"
+description: "Validate Agent Skill (SKILL.md) directories in a repository with skref."
+author: "Alephic AI"
+branding:
+  icon: "check-circle"
+  color: "purple"
+
+inputs:
+  path:
+    description: "Directory to scan recursively for skills (directories containing a SKILL.md)."
+    required: false
+    default: "."
+  fail-on-error:
+    description: "Fail the action if any skill is invalid."
+    required: false
+    default: "true"
+  to-prompt:
+    description: "If 'true', also print the <available_skills> XML block for all valid skills."
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          ${{ github.action_path }}/target
+        key: skref-${{ runner.os }}-${{ hashFiles(format('{0}/Cargo.lock', github.action_path)) }}
+
+    - name: Build and install skref
+      shell: bash
+      run: cargo install --path "$GITHUB_ACTION_PATH" --locked --root "$HOME/.skref-bin"
+
+    - name: Validate skills
+      shell: bash
+      env:
+        SCAN_PATH: ${{ inputs.path }}
+        FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+        TO_PROMPT: ${{ inputs.to-prompt }}
+      run: |
+        export PATH="$HOME/.skref-bin/bin:$PATH"
+        set -uo pipefail
+
+        # Discover every directory that contains a SKILL.md / skill.md.
+        mapfile -t skill_files < <(find "$SCAN_PATH" \
+          \( -iname 'SKILL.md' \) -type f | sort)
+
+        if [ "${#skill_files[@]}" -eq 0 ]; then
+          echo "::warning::No SKILL.md files found under '$SCAN_PATH'."
+          exit 0
+        fi
+
+        echo "Found ${#skill_files[@]} skill(s) under '$SCAN_PATH'."
+        failures=0
+        valid_dirs=()
+
+        for f in "${skill_files[@]}"; do
+          dir="$(dirname "$f")"
+          if skref validate "$dir"; then
+            valid_dirs+=("$dir")
+          else
+            echo "::error file=$f::Skill validation failed for $dir"
+            failures=$((failures + 1))
+          fi
+        done
+
+        echo
+        echo "Summary: $(( ${#skill_files[@]} - failures )) valid, $failures invalid."
+
+        if [ "$TO_PROMPT" = "true" ] && [ "${#valid_dirs[@]}" -gt 0 ]; then
+          echo
+          echo "<available_skills> block for valid skills:"
+          skref to-prompt "${valid_dirs[@]}"
+        fi
+
+        if [ "$failures" -gt 0 ] && [ "$FAIL_ON_ERROR" = "true" ]; then
+          exit 1
+        fi
