@@ -108,8 +108,7 @@ runs:
         set -uo pipefail
 
         # Discover every directory that contains a SKILL.md / skill.md.
-        mapfile -t skill_files < <(find "$SCAN_PATH" \
-          \( -iname 'SKILL.md' \) -type f | sort)
+        mapfile -t skill_files < <(find "$SCAN_PATH" -iname 'SKILL.md' -type f | sort)
 
         if [ "${#skill_files[@]}" -eq 0 ]; then
           echo "::warning::No SKILL.md files found under '$SCAN_PATH'."
