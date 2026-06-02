@@ -1,0 +1,43 @@
+name: Publish crate
+
+# Publishes skref to crates.io on every version tag, using crates.io Trusted
+# Publishing (OIDC) — no long-lived token stored in the repo. This is separate
+# from the dist-generated release.yml (which only builds binaries and cuts the
+# GitHub Release); dist does not publish to crates.io.
+#
+# The tag pattern matches release.yml's, so the moving `v1` major tag (no
+# minor.patch) does NOT trigger a publish. Use the workflow_dispatch dry-run to
+# smoke-test packaging without uploading.
+on:
+  push:
+    tags:
+      - '**[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Package and verify only; do not upload"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write # required for crates.io Trusted Publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Authenticate to crates.io (Trusted Publishing)
+        uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            cargo publish --locked --dry-run
+          else
+            cargo publish --locked
+          fi
