@@ -10,6 +10,26 @@ A fast Rust CLI and library for working with [Agent Skills](https://github.com/a
 
 ## Install
 
+### Prebuilt binaries
+
+Every [release](https://github.com/alephic-ai/skref/releases) ships prebuilt binaries for
+Linux (x86_64, aarch64), macOS (Intel and Apple Silicon), and Windows (x86_64). Install the
+latest with the one-line installer:
+
+```bash
+# macOS / Linux
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/alephic-ai/skref/releases/latest/download/skref-installer.sh | sh
+```
+
+```powershell
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://github.com/alephic-ai/skref/releases/latest/download/skref-installer.ps1 | iex"
+```
+
+Or download the archive for your platform from the [releases page](https://github.com/alephic-ai/skref/releases) and extract the `skref` binary onto your `PATH`.
+
+### From source
+
 ```bash
 cargo install --path .          # from a checkout
 # or
@@ -146,7 +166,7 @@ Inputs:
 
 See [`.github/workflows/validate-skills.yml`](.github/workflows/validate-skills.yml) for a working example against the bundled samples.
 
-> **Note:** the Action compiles `skref` from source on first use (`cargo install`), so the initial run takes a couple of minutes. Subsequent runs are fast thanks to the cargo cache. A future release will ship prebuilt binaries to remove the build step.
+> **Note:** the Action downloads the prebuilt `skref` binary that matches the runner platform from the corresponding GitHub Release, so it starts in seconds. If no matching release exists for the referenced ref (e.g. when pinning to a branch), it transparently falls back to compiling from source with `cargo install`.
 
 ## Sample skills
 

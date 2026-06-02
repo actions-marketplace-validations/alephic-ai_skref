@@ -22,10 +22,61 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Install skref (prebuilt binary)
+      id: install
+      shell: bash
+      run: |
+        set -uo pipefail
+
+        # Pin to the binary built from this same action ref. The version in the
+        # bundled Cargo.toml matches the tag (vX.Y.Z) that published the binaries.
+        VERSION="$(grep -m1 '^version' "$GITHUB_ACTION_PATH/Cargo.toml" | sed -E 's/.*"([^"]+)".*/\1/')"
+        TAG="v$VERSION"
+
+        # Map the runner platform to a dist target triple + archive extension.
+        case "$RUNNER_OS $RUNNER_ARCH" in
+          "Linux X64")    TRIPLE=x86_64-unknown-linux-gnu;  EXT=tar.xz; BIN=skref ;;
+          "Linux ARM64")  TRIPLE=aarch64-unknown-linux-gnu; EXT=tar.xz; BIN=skref ;;
+          "macOS X64")    TRIPLE=x86_64-apple-darwin;       EXT=tar.xz; BIN=skref ;;
+          "macOS ARM64")  TRIPLE=aarch64-apple-darwin;      EXT=tar.xz; BIN=skref ;;
+          "Windows X64")  TRIPLE=x86_64-pc-windows-msvc;    EXT=zip;    BIN=skref.exe ;;
+          *)              TRIPLE="" ;;
+        esac
+
+        if [ -z "$TRIPLE" ]; then
+          echo "::warning::No prebuilt skref binary for '$RUNNER_OS $RUNNER_ARCH'; building from source."
+          echo "method=source" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        mkdir -p "$HOME/.skref-bin/bin"
+
+        if (
+          set -e
+          url="https://github.com/alephic-ai/skref/releases/download/$TAG/skref-$TRIPLE.$EXT"
+          tmp="$(mktemp -d)"
+          echo "Downloading $url"
+          curl --proto '=https' --tlsv1.2 -fsSL "$url" -o "$tmp/skref.$EXT"
+          # bsdtar (default on macOS/Windows runners) handles both .tar.xz and .zip.
+          if [ "$EXT" = "zip" ]; then tar -xf "$tmp/skref.$EXT" -C "$tmp"; else tar -xJf "$tmp/skref.$EXT" -C "$tmp"; fi
+          mv "$tmp/$BIN" "$HOME/.skref-bin/bin/$BIN"
+          chmod +x "$HOME/.skref-bin/bin/$BIN"
+        ); then
+          echo "method=prebuilt" >> "$GITHUB_OUTPUT"
+          echo "Installed prebuilt skref $VERSION ($TRIPLE)."
+        else
+          echo "::warning::Could not install prebuilt skref $TAG ($TRIPLE); building from source."
+          echo "method=source" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Source-build fallback: only runs when no matching prebuilt binary was
+    # installed (e.g. the action is referenced from a ref with no release yet).
     - name: Install Rust toolchain
+      if: ${{ steps.install.outputs.method == 'source' }}
       uses: dtolnay/rust-toolchain@stable
 
     - name: Cache cargo build
+      if: ${{ steps.install.outputs.method == 'source' }}
       uses: actions/cache@v4
       with:
         path: |
@@ -38,6 +89,7 @@ runs:
         key: skref-${{ runner.os }}-${{ github.action_ref || 'local' }}
 
     - name: Build and install skref
+      if: ${{ steps.install.outputs.method == 'source' }}
       shell: bash
       run: cargo install --path "$GITHUB_ACTION_PATH" --locked --root "$HOME/.skref-bin"
 
