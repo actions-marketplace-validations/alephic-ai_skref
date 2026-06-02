@@ -28,8 +28,9 @@ runs:
       run: |
         set -uo pipefail
 
-        # Pin to the binary built from this same action ref. The version in the
-        # bundled Cargo.toml matches the tag (vX.Y.Z) that published the binaries.
+        # Pin to the binary built from this same action ref: the version in the
+        # bundled Cargo.toml is the one published by the matching "vX.Y.Z" tag.
+        # Releases are always tagged "vX.Y.Z" (see AGENTS.md).
         VERSION="$(grep -m1 '^version' "$GITHUB_ACTION_PATH/Cargo.toml" | sed -E 's/.*"([^"]+)".*/\1/')"
         TAG="v$VERSION"
 
@@ -51,19 +52,22 @@ runs:
 
         mkdir -p "$HOME/.skref-bin/bin"
 
-        if (
-          set -e
-          url="https://github.com/alephic-ai/skref/releases/download/$TAG/skref-$TRIPLE.$EXT"
-          tmp="$(mktemp -d)"
-          echo "Downloading $url"
-          curl --proto '=https' --tlsv1.2 -fsSL "$url" -o "$tmp/skref.$EXT"
-          # bsdtar (default on macOS/Windows runners) handles both .tar.xz and .zip.
-          if [ "$EXT" = "zip" ]; then tar -xf "$tmp/skref.$EXT" -C "$tmp"; else tar -xJf "$tmp/skref.$EXT" -C "$tmp"; fi
-          mv "$tmp/$BIN" "$HOME/.skref-bin/bin/$BIN"
-          chmod +x "$HOME/.skref-bin/bin/$BIN"
-        ); then
+        url="https://github.com/alephic-ai/skref/releases/download/$TAG/skref-$TRIPLE.$EXT"
+        tmp="$(mktemp -d)"
+        echo "Downloading $url"
+        # &&-chain so a 404 short-circuits cleanly (set -e is unreliable inside
+        # an `if (...)` subshell on bash 3.2). modern GNU tar (Linux .tar.xz) and
+        # bsdtar (macOS/Windows .tar.xz and .zip) both auto-detect from -xf.
+        # dist nests the binary under a "skref-<triple>/" prefix dir, so locate it
+        # by name to stay agnostic to the exact archive layout.
+        if curl --proto '=https' --tlsv1.2 -fsSL "$url" -o "$tmp/skref.$EXT" \
+          && tar -xf "$tmp/skref.$EXT" -C "$tmp" \
+          && bin_path="$(find "$tmp" -type f -name "$BIN" | head -n1)" \
+          && [ -n "$bin_path" ] \
+          && mv "$bin_path" "$HOME/.skref-bin/bin/$BIN" \
+          && chmod +x "$HOME/.skref-bin/bin/$BIN"; then
           echo "method=prebuilt" >> "$GITHUB_OUTPUT"
-          echo "Installed prebuilt skref $VERSION ($TRIPLE)."
+          echo "Installed prebuilt skref $VERSION ($TRIPLE) from tag $TAG."
         else
           echo "::warning::Could not install prebuilt skref $TAG ($TRIPLE); building from source."
           echo "method=source" >> "$GITHUB_OUTPUT"
