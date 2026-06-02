@@ -30,8 +30,14 @@ runs:
 
         # Pin to the binary built from this same action ref: the version in the
         # bundled Cargo.toml is the one published by the matching "vX.Y.Z" tag.
-        # Releases are always tagged "vX.Y.Z" (see AGENTS.md).
-        VERSION="$(grep -m1 '^version' "$GITHUB_ACTION_PATH/Cargo.toml" | sed -E 's/.*"([^"]+)".*/\1/')"
+        # Releases are always tagged "vX.Y.Z" (see AGENTS.md). Anchor on the `=` so
+        # a future "version-..." key in Cargo.toml can't be matched by accident.
+        VERSION="$(grep -m1 '^version[[:space:]]*=' "$GITHUB_ACTION_PATH/Cargo.toml" | sed -E 's/.*"([^"]+)".*/\1/')"
+        if [ -z "$VERSION" ]; then
+          echo "::warning::Could not read version from $GITHUB_ACTION_PATH/Cargo.toml; building from source."
+          echo "method=source" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
         TAG="v$VERSION"
 
         # Map the runner platform to a dist target triple + archive extension.
