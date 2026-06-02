@@ -20,7 +20,7 @@ jobs:
     name: Validate sample skills (should pass)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Validate valid sample skills
         uses: ./
@@ -33,7 +33,7 @@ jobs:
     name: Detect invalid skills (report only)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Report on intentionally-invalid skills
         uses: ./
