@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/alephic-ai/skref/actions/workflows/ci.yml/badge.svg)](https://github.com/alephic-ai/skref/actions/workflows/ci.yml)
 
-A fast Rust CLI and library for working with [Agent Skills](https://github.com/agentskills/agentskills) — the open `SKILL.md` format for extending AI agents.
+A fast Rust CLI for working with [Agent Skills](https://github.com/agentskills/agentskills) — the open `SKILL.md` format for extending AI agents.
 
 `skref` is a Rust port of the Python [`skills-ref`](https://github.com/agentskills/agentskills/tree/main/skills-ref) reference library. It validates skills, reads their properties, and renders the `<available_skills>` prompt block — as a single static binary with no runtime dependencies.
 
@@ -85,25 +85,6 @@ A minimal example skill that greets the user. ...
 </location>
 </skill>
 </available_skills>
-```
-
-## Library
-
-`skref` is also a crate:
-
-```rust
-use std::path::Path;
-use skref::{validate, read_properties, to_prompt};
-
-let problems = validate(Path::new("my-skill"));
-if problems.is_empty() {
-    let props = read_properties(Path::new("my-skill"))?;
-    println!("{} — {}", props.name, props.description);
-}
-
-let prompt = to_prompt(&[Path::new("skill-a"), Path::new("skill-b")])?;
-println!("{prompt}");
-# Ok::<(), skref::SkillError>(())
 ```
 
 ## The `SKILL.md` format
