@@ -1,6 +1,6 @@
 [package]
 name = "skref"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Reference implementation of the Agent Skills tooling: validate, read-properties, and to-prompt for SKILL.md skills"
