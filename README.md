@@ -10,11 +10,17 @@ A fast Rust CLI for working with [Agent Skills](https://github.com/agentskills/a
 
 ## Install
 
+### With Cargo
+
+```bash
+cargo install skref
+```
+
 ### Prebuilt binaries
 
-Every [release](https://github.com/alephic-ai/skref/releases) ships prebuilt binaries for
-Linux (x86_64, aarch64), macOS (Intel and Apple Silicon), and Windows (x86_64). Install the
-latest with the one-line installer:
+Prefer not to compile? Every [release](https://github.com/alephic-ai/skref/releases) ships
+prebuilt binaries for Linux (x86_64, aarch64), macOS (Intel and Apple Silicon), and Windows
+(x86_64). Install the latest with the one-line installer:
 
 ```bash
 # macOS / Linux
@@ -30,13 +36,13 @@ Or download the archive for your platform from the [releases page](https://githu
 
 ### From source
 
-```bash
-cargo install --path .          # from a checkout
-# or
-cargo install --git https://github.com/alephic-ai/skref skref
-```
+For an unreleased revision:
 
-This produces a `skref` binary on your `PATH`.
+```bash
+cargo install --git https://github.com/alephic-ai/skref
+# or, from a checkout:
+cargo install --path .
+```
 
 ## CLI
 

@@ -2,19 +2,16 @@
 
 ## Supported versions
 
-`skref` is pre-1.0. Security fixes are applied to the latest released version on
-the `main` branch. Please make sure you are on the most recent release before
-reporting an issue.
+Security fixes are applied to the latest released version. Please make sure you
+are on the most recent release before reporting an issue.
 
 ## Reporting a vulnerability
 
 Please **do not** open a public GitHub issue for security vulnerabilities.
 
-Instead, report them privately by either:
-
-- Using GitHub's [private vulnerability reporting](https://github.com/alephic-ai/skref/security/advisories/new)
-  ("Report a vulnerability" under the repository's **Security** tab), or
-- Emailing **laurent@alephic.com** with the details.
+Instead, report them privately using GitHub's
+[private vulnerability reporting](https://github.com/alephic-ai/skref/security/advisories/new)
+("Report a vulnerability" under the repository's **Security** tab).
 
 Please include:
 
