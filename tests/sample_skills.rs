@@ -99,11 +99,14 @@ fn claude_samples_validate_only_with_flag() {
 
     for dir in dirs {
         // Valid once Claude fields are allowed...
+        // Valid once Claude fields are allowed...
+        let errors_allow = validate(&dir, true);
         assert!(
-            validate(&dir, true).is_empty(),
+            errors_allow.is_empty(),
             "expected {} to be valid with --allow-claude-fields, got: {:?}",
             dir.display(),
-            validate(&dir, true)
+            errors_allow
+        );
         );
         // ...and rejected under the base spec.
         assert!(
