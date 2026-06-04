@@ -166,6 +166,7 @@ Inputs:
 - `fail-on-error` (default `true`) — fail the job if any skill is invalid.
 - `to-prompt` (default `false`) — also print the `<available_skills>` block for the valid skills.
 - `allow-claude-fields` (default `false`) — also accept Claude Code's extra frontmatter fields during validation.
+- `from-source` (default `false`) — build skref from the action's source instead of downloading a prebuilt release binary. Useful for testing unreleased changes.
 
 See [`.github/workflows/validate-skills.yml`](.github/workflows/validate-skills.yml) for a working example against the bundled samples.
 
