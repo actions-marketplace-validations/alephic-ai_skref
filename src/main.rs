@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use skref::{Options, read_properties_with_options, to_prompt, validate_with_options};
+use skref::{read_properties, to_prompt, validate};
 
 /// Reference library for Agent Skills.
 #[derive(Parser)]
@@ -71,9 +71,9 @@ fn resolve_skill_path(path: &Path) -> PathBuf {
     }
 }
 
-fn cmd_validate(skill_path: &Path, opts: Options) -> ExitCode {
+fn cmd_validate(skill_path: &Path, allow_claude_fields: bool) -> ExitCode {
     let skill_path = resolve_skill_path(skill_path);
-    let errors = validate_with_options(&skill_path, opts);
+    let errors = validate(&skill_path, allow_claude_fields);
 
     if errors.is_empty() {
         println!("Valid skill: {}", skill_path.display());
@@ -87,9 +87,9 @@ fn cmd_validate(skill_path: &Path, opts: Options) -> ExitCode {
     }
 }
 
-fn cmd_read_properties(skill_path: &Path, opts: Options) -> ExitCode {
+fn cmd_read_properties(skill_path: &Path, allow_claude_fields: bool) -> ExitCode {
     let skill_path = resolve_skill_path(skill_path);
-    match read_properties_with_options(&skill_path, opts) {
+    match read_properties(&skill_path, allow_claude_fields) {
         Ok(props) => {
             println!("{}", props.to_json());
             ExitCode::SUCCESS
@@ -121,21 +121,11 @@ fn main() -> ExitCode {
         Command::Validate {
             skill_path,
             allow_claude_fields,
-        } => cmd_validate(
-            &skill_path,
-            Options {
-                allow_claude_fields,
-            },
-        ),
+        } => cmd_validate(&skill_path, allow_claude_fields),
         Command::ReadProperties {
             skill_path,
             allow_claude_fields,
-        } => cmd_read_properties(
-            &skill_path,
-            Options {
-                allow_claude_fields,
-            },
-        ),
+        } => cmd_read_properties(&skill_path, allow_claude_fields),
         Command::ToPrompt { skill_paths } => cmd_to_prompt(&skill_paths),
     }
 }

@@ -76,10 +76,10 @@ skref read-properties path/to/skill --allow-claude-fields
 ### Examples
 
 ```console
-$ skref validate sample-skills/pdf-processing
-Valid skill: sample-skills/pdf-processing
+$ skref validate tests/fixtures/sample-skills/pdf-processing
+Valid skill: tests/fixtures/sample-skills/pdf-processing
 
-$ skref read-properties sample-skills/pdf-processing
+$ skref read-properties tests/fixtures/sample-skills/pdf-processing
 {
   "name": "pdf-processing",
   "description": "Extract text and tables from PDF files, ...",
@@ -91,7 +91,7 @@ $ skref read-properties sample-skills/pdf-processing
   }
 }
 
-$ skref to-prompt sample-skills/hello-world
+$ skref to-prompt tests/fixtures/sample-skills/hello-world
 <available_skills>
 <skill>
 <name>
@@ -101,7 +101,7 @@ hello-world
 A minimal example skill that greets the user. ...
 </description>
 <location>
-/abs/path/sample-skills/hello-world/SKILL.md
+/abs/path/tests/fixtures/sample-skills/hello-world/SKILL.md
 </location>
 </skill>
 </available_skills>
@@ -173,14 +173,21 @@ See [`.github/workflows/validate-skills.yml`](.github/workflows/validate-skills.
 
 ## Sample skills
 
-[`sample-skills/`](sample-skills) contains valid skills used by the test suite and the Action demo:
+All test fixtures live under [`tests/fixtures/`](tests/fixtures).
+
+[`tests/fixtures/sample-skills/`](tests/fixtures/sample-skills) contains valid skills used by the test suite and the Action demo:
 
 - `hello-world` — the minimal valid skill.
 - `pdf-processing` — a richer skill bundling a script and a reference doc.
 - `git-commit-helper` — uses the experimental `allowed-tools` field.
 - `перевод` — demonstrates i18n (non-Latin) skill names.
 
-[`examples/invalid-skills/`](examples/invalid-skills) contains intentionally-broken skills used to test that validation fails.
+[`tests/fixtures/claude-skills/`](tests/fixtures/claude-skills) contains skills that use Claude Code's extra frontmatter fields, valid only with `--allow-claude-fields`:
+
+- `claude-everything` — uses every supported field (the six base fields plus all thirteen Claude Code extensions).
+- `claude-pr-reviewer` — a realistic subset.
+
+[`tests/fixtures/invalid-skills/`](tests/fixtures/invalid-skills) contains intentionally-broken skills used to test that validation fails.
 
 Discover more skills to try at [skills.sh](https://www.skills.sh/).
 

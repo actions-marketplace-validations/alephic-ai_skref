@@ -12,9 +12,9 @@
 //! use std::path::Path;
 //! use skref::{validate, read_properties, to_prompt};
 //!
-//! let problems = validate(Path::new("my-skill"));
+//! let problems = validate(Path::new("my-skill"), false);
 //! if problems.is_empty() {
-//!     let props = read_properties(Path::new("my-skill")).unwrap();
+//!     let props = read_properties(Path::new("my-skill"), false).unwrap();
 //!     println!("Skill: {} - {}", props.name, props.description);
 //! }
 //!
@@ -24,20 +24,17 @@
 //!
 //! [`skills-ref`]: https://github.com/agentskills/agentskills/tree/main/skills-ref
 
+pub mod constants;
 pub mod errors;
 pub mod models;
-pub mod options;
 pub mod parser;
 pub mod prompt;
 pub mod validator;
 pub mod yaml;
 
+pub use constants::{ALLOWED_FIELDS, CLAUDE_FIELDS};
 pub use errors::{Result, SkillError};
 pub use models::SkillProperties;
-pub use options::Options;
-pub use parser::{find_skill_md, parse_frontmatter, read_properties, read_properties_with_options};
+pub use parser::{find_skill_md, parse_frontmatter, read_properties};
 pub use prompt::to_prompt;
-pub use validator::{
-    CLAUDE_FIELDS, validate, validate_metadata, validate_metadata_with_options,
-    validate_with_options,
-};
+pub use validator::{validate, validate_metadata};

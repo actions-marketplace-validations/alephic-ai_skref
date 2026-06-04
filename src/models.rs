@@ -16,9 +16,10 @@ use crate::yaml::FmValue;
 /// * `metadata` — key-value pairs for client-specific properties. Order is
 ///   preserved. Omitted from [`to_dict`](SkillProperties::to_dict) when empty.
 /// * `claude` — Claude Code's extra frontmatter fields, captured only when
-///   reading with [`Options::allow_claude_fields`](crate::Options). Order is
-///   the spec order of [`CLAUDE_FIELDS`](crate::validator::CLAUDE_FIELDS).
-///   Values keep their YAML structure (lists, nested maps). Empty otherwise.
+///   reading with `allow_claude_fields` set (see
+///   [`read_properties`](crate::read_properties)). Order is the spec order of
+///   [`CLAUDE_FIELDS`](crate::constants::CLAUDE_FIELDS). Values keep their YAML
+///   structure (lists, nested maps). Empty otherwise.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SkillProperties {
     pub name: String,

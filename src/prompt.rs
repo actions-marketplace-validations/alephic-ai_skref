@@ -43,7 +43,7 @@ pub fn to_prompt(skill_dirs: &[impl AsRef<Path>]) -> Result<String> {
         // to the path as given if it cannot be canonicalized.
         let dir = std::fs::canonicalize(skill_dir.as_ref())
             .unwrap_or_else(|_| skill_dir.as_ref().to_path_buf());
-        let props = read_properties(&dir)?;
+        let props = read_properties(&dir, false)?;
 
         lines.push("<skill>".to_string());
         lines.push("<name>".to_string());

@@ -25,9 +25,22 @@ jobs:
       - name: Validate valid sample skills
         uses: ./
         with:
-          path: sample-skills
+          path: tests/fixtures/sample-skills
           fail-on-error: "true"
           to-prompt: "true"
+
+  validate-claude:
+    name: Validate Claude-specific skills (needs --allow-claude-fields)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate Claude skills with allow-claude-fields
+        uses: ./
+        with:
+          path: tests/fixtures/claude-skills
+          allow-claude-fields: "true"
+          fail-on-error: "true"
 
   detect-invalid:
     name: Detect invalid skills (report only)
@@ -38,6 +51,6 @@ jobs:
       - name: Report on intentionally-invalid skills
         uses: ./
         with:
-          path: examples/invalid-skills
+          path: tests/fixtures/invalid-skills
           # These fixtures are intentionally broken; report without failing.
           fail-on-error: "false"

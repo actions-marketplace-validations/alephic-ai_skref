@@ -4,44 +4,13 @@ use std::path::Path;
 
 use unicode_normalization::UnicodeNormalization;
 
-use crate::options::Options;
+use crate::constants::{ALLOWED_FIELDS, CLAUDE_FIELDS};
 use crate::parser::{find_skill_md, parse_frontmatter};
 use crate::yaml::{FmValue, Frontmatter};
 
 pub const MAX_SKILL_NAME_LENGTH: usize = 64;
 pub const MAX_DESCRIPTION_LENGTH: usize = 1024;
 pub const MAX_COMPATIBILITY_LENGTH: usize = 500;
-
-/// Allowed frontmatter fields per the Agent Skills spec.
-pub const ALLOWED_FIELDS: [&str; 6] = [
-    "name",
-    "description",
-    "license",
-    "allowed-tools",
-    "metadata",
-    "compatibility",
-];
-
-/// Claude Code's extra frontmatter fields, layered on top of [`ALLOWED_FIELDS`]
-/// when [`Options::allow_claude_fields`] is set. `name`, `description`, and
-/// `allowed-tools` are shared with the base spec and so are not repeated here.
-///
-/// See <https://code.claude.com/docs/en/skills#frontmatter-reference>.
-pub const CLAUDE_FIELDS: [&str; 13] = [
-    "when_to_use",
-    "argument-hint",
-    "arguments",
-    "disable-model-invocation",
-    "user-invocable",
-    "disallowed-tools",
-    "model",
-    "effort",
-    "context",
-    "agent",
-    "hooks",
-    "paths",
-    "shell",
-];
 
 /// NFKC-normalize a string (matches Python's `unicodedata.normalize("NFKC", ...)`).
 fn nfkc(s: &str) -> String {
@@ -199,21 +168,16 @@ fn validate_metadata_fields(metadata: &Frontmatter, allow_claude_fields: bool) -
 /// This is the core validation routine that works on already-parsed
 /// frontmatter, avoiding duplicate file I/O. Returns the list of validation
 /// error messages; an empty list means valid.
-pub fn validate_metadata(metadata: &Frontmatter, skill_dir: Option<&Path>) -> Vec<String> {
-    validate_metadata_with_options(metadata, skill_dir, Options::default())
-}
-
-/// Validate parsed skill metadata under the given [`Options`].
 ///
-/// Like [`validate_metadata`], but [`Options::allow_claude_fields`] additionally
-/// permits Claude Code's [`CLAUDE_FIELDS`].
-pub fn validate_metadata_with_options(
+/// When `allow_claude_fields` is set, Claude Code's [`CLAUDE_FIELDS`] are
+/// permitted in addition to the base-spec [`ALLOWED_FIELDS`].
+pub fn validate_metadata(
     metadata: &Frontmatter,
     skill_dir: Option<&Path>,
-    opts: Options,
+    allow_claude_fields: bool,
 ) -> Vec<String> {
     let mut errors = Vec::new();
-    errors.extend(validate_metadata_fields(metadata, opts.allow_claude_fields));
+    errors.extend(validate_metadata_fields(metadata, allow_claude_fields));
 
     match metadata.get("name") {
         None => errors.push("Missing required field in frontmatter: name".to_string()),
@@ -235,16 +199,10 @@ pub fn validate_metadata_with_options(
 /// Validate a skill directory.
 ///
 /// Returns the list of validation error messages; an empty list means the
-/// skill is valid.
-pub fn validate(skill_dir: &Path) -> Vec<String> {
-    validate_with_options(skill_dir, Options::default())
-}
-
-/// Validate a skill directory under the given [`Options`].
-///
-/// Like [`validate`], but [`Options::allow_claude_fields`] additionally permits
-/// Claude Code's [`CLAUDE_FIELDS`].
-pub fn validate_with_options(skill_dir: &Path, opts: Options) -> Vec<String> {
+/// skill is valid. When `allow_claude_fields` is set, Claude Code's
+/// [`CLAUDE_FIELDS`] are permitted in addition to the base-spec
+/// [`ALLOWED_FIELDS`].
+pub fn validate(skill_dir: &Path, allow_claude_fields: bool) -> Vec<String> {
     if !skill_dir.exists() {
         return vec![format!("Path does not exist: {}", skill_dir.display())];
     }
@@ -264,7 +222,7 @@ pub fn validate_with_options(skill_dir: &Path, opts: Options) -> Vec<String> {
     };
 
     match parse_frontmatter(&content) {
-        Ok((metadata, _body)) => validate_metadata_with_options(&metadata, Some(skill_dir), opts),
+        Ok((metadata, _body)) => validate_metadata(&metadata, Some(skill_dir), allow_claude_fields),
         Err(e) => vec![e.to_string()],
     }
 }
