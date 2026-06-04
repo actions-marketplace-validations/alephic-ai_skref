@@ -30,6 +30,9 @@ cargo test
 `releases/download/v$VERSION/…`, so a tag without the `v` prefix leaves the binaries
 unreachable and forces the action onto its slower source-build fallback.
 
+See [`doc/releasing.md`](doc/releasing.md) for the full step-by-step release process
+(version-bump PR, autopublish on tag, and moving the `v1` tag).
+
 ## Fidelity notes
 
 - The frontmatter split mirrors Python's `content.split("---", 2)`.
