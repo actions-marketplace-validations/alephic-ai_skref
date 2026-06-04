@@ -19,13 +19,13 @@ fn valid_skill() {
         "my-skill",
         "---\nname: my-skill\ndescription: A test skill\n---\n# My Skill\n",
     );
-    assert_eq!(validate(&skill_dir), Vec::<String>::new());
+    assert_eq!(validate(&skill_dir, false), Vec::<String>::new());
 }
 
 #[test]
 fn nonexistent_path() {
     let tmp = tempdir().unwrap();
-    let errors = validate(&tmp.path().join("nonexistent"));
+    let errors = validate(&tmp.path().join("nonexistent"), false);
     assert_eq!(errors.len(), 1);
     assert!(errors[0].contains("does not exist"));
 }
@@ -35,7 +35,7 @@ fn not_a_directory() {
     let tmp = tempdir().unwrap();
     let file_path = tmp.path().join("file.txt");
     fs::write(&file_path, "test").unwrap();
-    let errors = validate(&file_path);
+    let errors = validate(&file_path, false);
     assert_eq!(errors.len(), 1);
     assert!(errors[0].contains("Not a directory"));
 }
@@ -45,7 +45,7 @@ fn missing_skill_md() {
     let tmp = tempdir().unwrap();
     let skill_dir = tmp.path().join("my-skill");
     fs::create_dir(&skill_dir).unwrap();
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert_eq!(errors.len(), 1);
     assert!(errors[0].contains("Missing required file: SKILL.md"));
 }
@@ -58,7 +58,7 @@ fn invalid_name_uppercase() {
         "MySkill",
         "---\nname: MySkill\ndescription: A test skill\n---\nBody\n",
     );
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(errors.iter().any(|e| e.contains("lowercase")));
 }
 
@@ -68,7 +68,7 @@ fn name_too_long() {
     let long_name = "a".repeat(70);
     let body = format!("---\nname: {long_name}\ndescription: A test skill\n---\nBody\n");
     let skill_dir = write_skill(tmp.path(), &long_name, &body);
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(
         errors
             .iter()
@@ -84,7 +84,7 @@ fn name_leading_hyphen() {
         "-my-skill",
         "---\nname: -my-skill\ndescription: A test skill\n---\nBody\n",
     );
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(
         errors
             .iter()
@@ -100,7 +100,7 @@ fn name_consecutive_hyphens() {
         "my--skill",
         "---\nname: my--skill\ndescription: A test skill\n---\nBody\n",
     );
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(errors.iter().any(|e| e.contains("consecutive hyphens")));
 }
 
@@ -112,7 +112,7 @@ fn name_invalid_characters() {
         "my_skill",
         "---\nname: my_skill\ndescription: A test skill\n---\nBody\n",
     );
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(errors.iter().any(|e| e.contains("invalid characters")));
 }
 
@@ -124,7 +124,7 @@ fn name_directory_mismatch() {
         "wrong-name",
         "---\nname: correct-name\ndescription: A test skill\n---\nBody\n",
     );
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(errors.iter().any(|e| e.contains("must match skill name")));
 }
 
@@ -136,8 +136,48 @@ fn unexpected_fields() {
         "my-skill",
         "---\nname: my-skill\ndescription: A test skill\nunknown_field: should not be here\n---\nBody\n",
     );
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(errors.iter().any(|e| e.contains("Unexpected fields")));
+}
+
+#[test]
+fn claude_fields_rejected_by_default() {
+    let tmp = tempdir().unwrap();
+    let skill_dir = write_skill(
+        tmp.path(),
+        "my-skill",
+        "---\nname: my-skill\ndescription: A test skill\nmodel: inherit\ndisable-model-invocation: true\n---\nBody\n",
+    );
+    let errors = validate(&skill_dir, false);
+    assert!(errors.iter().any(|e| e.contains("Unexpected fields")));
+}
+
+#[test]
+fn claude_fields_accepted_with_option() {
+    let tmp = tempdir().unwrap();
+    let skill_dir = write_skill(
+        tmp.path(),
+        "my-skill",
+        "---\nname: my-skill\ndescription: A test skill\nmodel: inherit\ndisable-model-invocation: true\nwhen_to_use: when testing\n---\nBody\n",
+    );
+    assert_eq!(validate(&skill_dir, true), Vec::<String>::new());
+}
+
+#[test]
+fn unknown_field_still_rejected_with_option() {
+    let tmp = tempdir().unwrap();
+    let skill_dir = write_skill(
+        tmp.path(),
+        "my-skill",
+        "---\nname: my-skill\ndescription: A test skill\nmodel: inherit\nbogus: nope\n---\nBody\n",
+    );
+    let errors = validate(&skill_dir, true);
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.contains("Unexpected fields") && e.contains("bogus")),
+        "expected `bogus` to still be rejected, got: {errors:?}"
+    );
 }
 
 #[test]
@@ -148,7 +188,7 @@ fn valid_with_all_fields() {
         "my-skill",
         "---\nname: my-skill\ndescription: A test skill\nlicense: MIT\nmetadata:\n  author: Test\n---\nBody\n",
     );
-    assert_eq!(validate(&skill_dir), Vec::<String>::new());
+    assert_eq!(validate(&skill_dir, false), Vec::<String>::new());
 }
 
 #[test]
@@ -159,7 +199,7 @@ fn allowed_tools_accepted() {
         "my-skill",
         "---\nname: my-skill\ndescription: A test skill\nallowed-tools: Bash(jq:*) Bash(git:*)\n---\nBody\n",
     );
-    assert_eq!(validate(&skill_dir), Vec::<String>::new());
+    assert_eq!(validate(&skill_dir, false), Vec::<String>::new());
 }
 
 #[test]
@@ -170,7 +210,7 @@ fn i18n_chinese_name() {
         "技能",
         "---\nname: 技能\ndescription: A skill with Chinese name\n---\nBody\n",
     );
-    assert_eq!(validate(&skill_dir), Vec::<String>::new());
+    assert_eq!(validate(&skill_dir, false), Vec::<String>::new());
 }
 
 #[test]
@@ -181,7 +221,7 @@ fn i18n_russian_name_with_hyphens() {
         "мой-навык",
         "---\nname: мой-навык\ndescription: A skill with Russian name\n---\nBody\n",
     );
-    assert_eq!(validate(&skill_dir), Vec::<String>::new());
+    assert_eq!(validate(&skill_dir, false), Vec::<String>::new());
 }
 
 #[test]
@@ -192,7 +232,7 @@ fn i18n_russian_lowercase_valid() {
         "навык",
         "---\nname: навык\ndescription: A skill with Russian lowercase name\n---\nBody\n",
     );
-    assert_eq!(validate(&skill_dir), Vec::<String>::new());
+    assert_eq!(validate(&skill_dir, false), Vec::<String>::new());
 }
 
 #[test]
@@ -203,7 +243,7 @@ fn i18n_russian_uppercase_rejected() {
         "НАВЫК",
         "---\nname: НАВЫК\ndescription: A skill with Russian uppercase name\n---\nBody\n",
     );
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(errors.iter().any(|e| e.contains("lowercase")));
 }
 
@@ -213,7 +253,7 @@ fn description_too_long() {
     let long_desc = "x".repeat(1100);
     let body = format!("---\nname: my-skill\ndescription: {long_desc}\n---\nBody\n");
     let skill_dir = write_skill(tmp.path(), "my-skill", &body);
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(
         errors
             .iter()
@@ -229,7 +269,7 @@ fn valid_compatibility() {
         "my-skill",
         "---\nname: my-skill\ndescription: A test skill\ncompatibility: Requires Python 3.11+\n---\nBody\n",
     );
-    assert_eq!(validate(&skill_dir), Vec::<String>::new());
+    assert_eq!(validate(&skill_dir, false), Vec::<String>::new());
 }
 
 #[test]
@@ -240,7 +280,7 @@ fn compatibility_too_long() {
         "---\nname: my-skill\ndescription: A test skill\ncompatibility: {long_compat}\n---\nBody\n"
     );
     let skill_dir = write_skill(tmp.path(), "my-skill", &body);
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert!(
         errors
             .iter()
@@ -257,7 +297,7 @@ fn nfkc_normalization() {
     let composed_name = "café";
     let body = format!("---\nname: {decomposed_name}\ndescription: A test skill\n---\nBody\n");
     let skill_dir = write_skill(tmp.path(), composed_name, &body);
-    let errors = validate(&skill_dir);
+    let errors = validate(&skill_dir, false);
     assert_eq!(
         errors,
         Vec::<String>::new(),

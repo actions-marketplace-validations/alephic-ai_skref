@@ -3,6 +3,10 @@ name: Validate skills
 # Demonstrates the skref action. Copy this into any repository to validate its
 # own skills: point `path` at the directory holding your skill folders and
 # replace `./` in `uses:` with `alephic-ai/skref@v1`.
+#
+# NOTE: `from-source: "true"` below exists only because this repo dogfoods its
+# own unreleased code. Normal users should NOT set it — omit it to download the
+# fast prebuilt release binary (the action's default).
 
 on:
   push:
@@ -10,8 +14,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Least privilege: validation only reads the repository; failures and warnings
-# are surfaced via workflow-command annotations, which need no extra scopes.
 permissions:
   contents: read
 
@@ -25,9 +27,24 @@ jobs:
       - name: Validate valid sample skills
         uses: ./
         with:
-          path: sample-skills
+          path: tests/fixtures/sample-skills
           fail-on-error: "true"
           to-prompt: "true"
+          from-source: "true"
+
+  validate-claude:
+    name: Validate Claude-specific skills (needs --allow-claude-fields)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate Claude skills with allow-claude-fields
+        uses: ./
+        with:
+          path: tests/fixtures/claude-skills
+          allow-claude-fields: "true"
+          fail-on-error: "true"
+          from-source: "true"
 
   detect-invalid:
     name: Detect invalid skills (report only)
@@ -38,6 +55,6 @@ jobs:
       - name: Report on intentionally-invalid skills
         uses: ./
         with:
-          path: examples/invalid-skills
-          # These fixtures are intentionally broken; report without failing.
+          path: tests/fixtures/invalid-skills
           fail-on-error: "false"
+          from-source: "true"

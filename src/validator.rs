@@ -4,22 +4,13 @@ use std::path::Path;
 
 use unicode_normalization::UnicodeNormalization;
 
+use crate::constants::{ALLOWED_FIELDS, CLAUDE_FIELDS};
 use crate::parser::{find_skill_md, parse_frontmatter};
 use crate::yaml::{FmValue, Frontmatter};
 
 pub const MAX_SKILL_NAME_LENGTH: usize = 64;
 pub const MAX_DESCRIPTION_LENGTH: usize = 1024;
 pub const MAX_COMPATIBILITY_LENGTH: usize = 500;
-
-/// Allowed frontmatter fields per the Agent Skills spec.
-pub const ALLOWED_FIELDS: [&str; 6] = [
-    "name",
-    "description",
-    "license",
-    "allowed-tools",
-    "metadata",
-    "compatibility",
-];
 
 /// NFKC-normalize a string (matches Python's `unicodedata.normalize("NFKC", ...)`).
 fn nfkc(s: &str) -> String {
@@ -135,17 +126,30 @@ fn validate_compatibility(compatibility: &FmValue) -> Vec<String> {
 }
 
 /// Validate that only allowed fields are present.
-fn validate_metadata_fields(metadata: &Frontmatter) -> Vec<String> {
+///
+/// When `allow_claude_fields` is set, the Claude Code [`CLAUDE_FIELDS`] join the
+/// base [`ALLOWED_FIELDS`] for both the membership check and the error message.
+fn validate_metadata_fields(metadata: &Frontmatter, allow_claude_fields: bool) -> Vec<String> {
     let mut errors = Vec::new();
 
+    let allowed_fields: Vec<&str> = if allow_claude_fields {
+        ALLOWED_FIELDS
+            .iter()
+            .chain(CLAUDE_FIELDS.iter())
+            .copied()
+            .collect()
+    } else {
+        ALLOWED_FIELDS.to_vec()
+    };
+
     let allowed: std::collections::BTreeSet<String> =
-        ALLOWED_FIELDS.iter().map(|s| s.to_string()).collect();
+        allowed_fields.iter().map(|s| s.to_string()).collect();
     let extra: Vec<String> = metadata.keys().difference(&allowed).cloned().collect();
 
     if !extra.is_empty() {
         // `extra` is already sorted (BTreeSet difference yields sorted order).
         let allowed_repr: Vec<String> = {
-            let mut v: Vec<&str> = ALLOWED_FIELDS.to_vec();
+            let mut v = allowed_fields.clone();
             v.sort_unstable();
             v.iter().map(|s| format!("'{s}'")).collect()
         };
@@ -164,9 +168,16 @@ fn validate_metadata_fields(metadata: &Frontmatter) -> Vec<String> {
 /// This is the core validation routine that works on already-parsed
 /// frontmatter, avoiding duplicate file I/O. Returns the list of validation
 /// error messages; an empty list means valid.
-pub fn validate_metadata(metadata: &Frontmatter, skill_dir: Option<&Path>) -> Vec<String> {
+///
+/// When `allow_claude_fields` is set, Claude Code's [`CLAUDE_FIELDS`] are
+/// permitted in addition to the base-spec [`ALLOWED_FIELDS`].
+pub fn validate_metadata(
+    metadata: &Frontmatter,
+    skill_dir: Option<&Path>,
+    allow_claude_fields: bool,
+) -> Vec<String> {
     let mut errors = Vec::new();
-    errors.extend(validate_metadata_fields(metadata));
+    errors.extend(validate_metadata_fields(metadata, allow_claude_fields));
 
     match metadata.get("name") {
         None => errors.push("Missing required field in frontmatter: name".to_string()),
@@ -188,8 +199,10 @@ pub fn validate_metadata(metadata: &Frontmatter, skill_dir: Option<&Path>) -> Ve
 /// Validate a skill directory.
 ///
 /// Returns the list of validation error messages; an empty list means the
-/// skill is valid.
-pub fn validate(skill_dir: &Path) -> Vec<String> {
+/// skill is valid. When `allow_claude_fields` is set, Claude Code's
+/// [`CLAUDE_FIELDS`] are permitted in addition to the base-spec
+/// [`ALLOWED_FIELDS`].
+pub fn validate(skill_dir: &Path, allow_claude_fields: bool) -> Vec<String> {
     if !skill_dir.exists() {
         return vec![format!("Path does not exist: {}", skill_dir.display())];
     }
@@ -209,7 +222,7 @@ pub fn validate(skill_dir: &Path) -> Vec<String> {
     };
 
     match parse_frontmatter(&content) {
-        Ok((metadata, _body)) => validate_metadata(&metadata, Some(skill_dir)),
+        Ok((metadata, _body)) => validate_metadata(&metadata, Some(skill_dir), allow_claude_fields),
         Err(e) => vec![e.to_string()],
     }
 }

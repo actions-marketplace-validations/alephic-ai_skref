@@ -12,8 +12,8 @@
 - `src/models.rs` — `SkillProperties` + JSON output.
 - `src/yaml.rs` — frontmatter value model. Mirrors `strictyaml`: every scalar is coerced to a string.
 - `src/errors.rs` — `SkillError` (Parse / Validation).
-- `tests/` — `parser.rs`, `prompt.rs`, `validator.rs` are 1:1 ports of the Python tests; `sample_skills.rs` exercises the bundled skills.
-- `sample-skills/`, `examples/invalid-skills/` — fixtures.
+- `tests/` — `parser.rs`, `prompt.rs`, `validator.rs` are 1:1 ports of the Python tests; `sample_skills.rs` exercises the on-disk fixtures.
+- `tests/fixtures/` — `sample-skills/` (base-spec valid), `invalid-skills/` (intentionally broken), `claude-skills/` (valid only with `--allow-claude-fields`; `claude-everything` uses every supported field).
 
 ## Quality
 
@@ -36,3 +36,4 @@ unreachable and forces the action onto its slower source-build fallback.
 - Names are NFKC-normalized before validation and directory-name comparison.
 - `html.escape(quote=True)` is reproduced in `prompt::html_escape` (escapes `& < > " '`).
 - `read-properties` JSON uses 2-space indent and preserves insertion order to match `json.dumps(indent=2)`.
+- `--allow-claude-fields` (CLI flag, library `allow_claude_fields` bool parameter, action input `allow-claude-fields`) is a `skref` extension beyond the Python `skills-ref`: it whitelists Claude Code's `CLAUDE_FIELDS` for `validate` and surfaces them in `read-properties`. Default behavior is unchanged, so base-spec fidelity holds when the flag is off.

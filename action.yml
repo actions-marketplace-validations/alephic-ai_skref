@@ -18,6 +18,14 @@ inputs:
     description: "If 'true', also print the <available_skills> XML block for all valid skills."
     required: false
     default: "false"
+  allow-claude-fields:
+    description: "If 'true', also accept Claude Code's extra frontmatter fields (model, when_to_use, argument-hint, hooks, …) during validation."
+    required: false
+    default: "false"
+  from-source:
+    description: "If 'true', always build skref from this action's source instead of downloading a prebuilt release binary. Use to test unreleased changes (this repo's own demo workflow sets it)."
+    required: false
+    default: "false"
 
 runs:
   using: "composite"
@@ -25,8 +33,18 @@ runs:
     - name: Install skref (prebuilt binary)
       id: install
       shell: bash
+      env:
+        FROM_SOURCE: ${{ inputs.from-source }}
       run: |
         set -uo pipefail
+
+        # Opt-in: build from this checkout's source instead of a released
+        # binary (e.g. to exercise unreleased changes on a PR).
+        if [ "$FROM_SOURCE" = "true" ]; then
+          echo "Building skref from source (from-source=true)."
+          echo "method=source" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
 
         # Pin to the binary built from this same action ref: the version in the
         # bundled Cargo.toml is the one published by the matching "vX.Y.Z" tag.
@@ -109,9 +127,16 @@ runs:
         SCAN_PATH: ${{ inputs.path }}
         FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
         TO_PROMPT: ${{ inputs.to-prompt }}
+        ALLOW_CLAUDE_FIELDS: ${{ inputs.allow-claude-fields }}
       run: |
         export PATH="$HOME/.skref-bin/bin:$PATH"
         set -uo pipefail
+
+        # Optional validate flags, collected as an array so empty stays safe.
+        validate_args=()
+        if [ "$ALLOW_CLAUDE_FIELDS" = "true" ]; then
+          validate_args+=(--allow-claude-fields)
+        fi
 
         # Discover every directory that contains a SKILL.md / skill.md.
         mapfile -t skill_files < <(find "$SCAN_PATH" -iname 'SKILL.md' -type f | sort)
@@ -127,7 +152,9 @@ runs:
 
         for f in "${skill_files[@]}"; do
           dir="$(dirname "$f")"
-          if skref validate "$dir"; then
+          # An empty array expands to zero arguments here (this step already
+          # requires bash 4+ for `mapfile` above).
+          if skref validate "$dir" "${validate_args[@]}"; then
             valid_dirs+=("$dir")
           else
             echo "::error file=$f::Skill validation failed for $dir"

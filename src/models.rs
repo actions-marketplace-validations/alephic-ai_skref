@@ -2,6 +2,8 @@
 
 use serde_json::{Map, Value};
 
+use crate::yaml::FmValue;
+
 /// Properties parsed from a skill's `SKILL.md` frontmatter.
 ///
 /// Mirrors the reference `SkillProperties` dataclass.
@@ -13,6 +15,11 @@ use serde_json::{Map, Value};
 /// * `allowed_tools` — tool patterns the skill requires (optional, experimental)
 /// * `metadata` — key-value pairs for client-specific properties. Order is
 ///   preserved. Omitted from [`to_dict`](SkillProperties::to_dict) when empty.
+/// * `claude` — Claude Code's extra frontmatter fields, captured only when
+///   reading with `allow_claude_fields` set (see
+///   [`read_properties`](crate::read_properties)). Order is the spec order of
+///   [`CLAUDE_FIELDS`](crate::constants::CLAUDE_FIELDS). Values keep their YAML
+///   structure (lists, nested maps). Empty otherwise.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SkillProperties {
     pub name: String,
@@ -21,6 +28,24 @@ pub struct SkillProperties {
     pub compatibility: Option<String>,
     pub allowed_tools: Option<String>,
     pub metadata: Vec<(String, String)>,
+    pub claude: Vec<(String, FmValue)>,
+}
+
+/// Convert an [`FmValue`] to JSON, preserving list/map structure. Scalars are
+/// already strings (the strictyaml-style model), so booleans render as
+/// `"True"`/`"False"` consistently with the rest of the library.
+fn fmvalue_to_json(value: &FmValue) -> Value {
+    match value {
+        FmValue::Str(s) => Value::String(s.clone()),
+        FmValue::Seq(items) => Value::Array(items.iter().map(fmvalue_to_json).collect()),
+        FmValue::Map(entries) => {
+            let mut map = Map::new();
+            for (k, v) in entries {
+                map.insert(k.clone(), fmvalue_to_json(v));
+            }
+            Value::Object(map)
+        }
+    }
 }
 
 impl SkillProperties {
@@ -30,6 +55,7 @@ impl SkillProperties {
     /// `description`, then any of `license`, `compatibility`,
     /// `allowed-tools`, `metadata` that are present. Note that
     /// `allowed_tools` is emitted under the hyphenated key `allowed-tools`.
+    /// Any captured `claude` fields follow, each under its own frontmatter key.
     pub fn to_dict(&self) -> Value {
         let mut result = Map::new();
         result.insert("name".into(), Value::String(self.name.clone()));
@@ -53,6 +79,9 @@ impl SkillProperties {
                 meta.insert(k.clone(), Value::String(v.clone()));
             }
             result.insert("metadata".into(), Value::Object(meta));
+        }
+        for (k, v) in &self.claude {
+            result.insert(k.clone(), fmvalue_to_json(v));
         }
 
         Value::Object(result)

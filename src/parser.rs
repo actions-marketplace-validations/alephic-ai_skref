@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::constants::CLAUDE_FIELDS;
 use crate::errors::{Result, SkillError};
 use crate::models::SkillProperties;
 use crate::yaml::{FmValue, Frontmatter, parse_mapping};
@@ -62,12 +63,15 @@ pub fn parse_frontmatter(content: &str) -> Result<(Frontmatter, String)> {
 /// Parses the frontmatter and returns properties. This does **not** perform
 /// full validation — use [`crate::validator::validate`] for that.
 ///
+/// When `allow_claude_fields` is set, Claude Code's [`CLAUDE_FIELDS`] are
+/// captured into [`SkillProperties::claude`](crate::SkillProperties::claude).
+///
 /// # Errors
 ///
 /// * [`SkillError::Parse`] if `SKILL.md` is missing or has invalid YAML.
 /// * [`SkillError::Validation`] if required fields (`name`, `description`) are
 ///   missing or not non-empty strings.
-pub fn read_properties(skill_dir: &Path) -> Result<SkillProperties> {
+pub fn read_properties(skill_dir: &Path, allow_claude_fields: bool) -> Result<SkillProperties> {
     let skill_md = find_skill_md(skill_dir).ok_or_else(|| {
         SkillError::parse(format!("SKILL.md not found in {}", skill_dir.display()))
     })?;
@@ -124,12 +128,22 @@ pub fn read_properties(skill_dir: &Path) -> Result<SkillProperties> {
         compatibility,
         allowed_tools,
         metadata: Vec::new(),
+        claude: Vec::new(),
     };
 
     if let Some(FmValue::Map(entries)) = metadata.get("metadata") {
         props.metadata = entries
             .iter()
             .map(|(k, v)| (k.clone(), v.to_flat_string()))
+            .collect();
+    }
+
+    if allow_claude_fields {
+        // Iterate CLAUDE_FIELDS (not the frontmatter) so the captured order is
+        // deterministic spec order regardless of how the file lists them.
+        props.claude = CLAUDE_FIELDS
+            .iter()
+            .filter_map(|&field| metadata.get(field).map(|v| (field.to_string(), v.clone())))
             .collect();
     }
 
