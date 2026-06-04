@@ -36,3 +36,4 @@ unreachable and forces the action onto its slower source-build fallback.
 - Names are NFKC-normalized before validation and directory-name comparison.
 - `html.escape(quote=True)` is reproduced in `prompt::html_escape` (escapes `& < > " '`).
 - `read-properties` JSON uses 2-space indent and preserves insertion order to match `json.dumps(indent=2)`.
+- `--allow-claude-fields` (CLI/library `Options::allow_claude_fields`, action input `allow-claude-fields`) is a `skref` extension beyond the Python `skills-ref`: it whitelists Claude Code's `CLAUDE_FIELDS` for `validate` and surfaces them in `read-properties`. Default behavior is unchanged, so base-spec fidelity holds when the flag is off.

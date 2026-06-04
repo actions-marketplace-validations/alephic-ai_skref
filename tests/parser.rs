@@ -2,6 +2,7 @@
 
 use skref::errors::SkillError;
 use skref::parser::{find_skill_md, parse_frontmatter, read_properties};
+use skref::{Options, read_properties_with_options};
 use std::fs;
 use tempfile::tempdir;
 
@@ -79,6 +80,57 @@ fn read_with_metadata() {
             ("author".to_string(), "Test Author".to_string()),
             ("version".to_string(), "1.0".to_string()),
         ]
+    );
+}
+
+#[test]
+fn claude_fields_ignored_by_default() {
+    let tmp = tempdir().unwrap();
+    let skill_dir = tmp.path().join("my-skill");
+    fs::create_dir(&skill_dir).unwrap();
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: my-skill\ndescription: A test skill\nmodel: inherit\n---\nBody\n",
+    )
+    .unwrap();
+    let props = read_properties(&skill_dir).unwrap();
+    assert!(props.claude.is_empty());
+    assert!(props.to_dict().get("model").is_none());
+}
+
+#[test]
+fn claude_fields_captured_with_option() {
+    let tmp = tempdir().unwrap();
+    let skill_dir = tmp.path().join("my-skill");
+    fs::create_dir(&skill_dir).unwrap();
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: my-skill\ndescription: A test skill\nmodel: inherit\narguments:\n  - issue\n  - format\ndisable-model-invocation: true\nhooks:\n  PreToolUse: echo hi\n---\nBody\n",
+    )
+    .unwrap();
+    let opts = Options {
+        allow_claude_fields: true,
+    };
+    let props = read_properties_with_options(&skill_dir, opts).unwrap();
+    let dict = props.to_dict();
+
+    // Scalar passes through as a string.
+    assert_eq!(dict.get("model").and_then(|v| v.as_str()), Some("inherit"));
+    // List preserves structure.
+    assert_eq!(
+        dict.get("arguments").unwrap(),
+        &serde_json::json!(["issue", "format"])
+    );
+    // Bool renders as the strictyaml-style "True".
+    assert_eq!(
+        dict.get("disable-model-invocation")
+            .and_then(|v| v.as_str()),
+        Some("True")
+    );
+    // Nested map preserves structure.
+    assert_eq!(
+        dict.get("hooks").unwrap(),
+        &serde_json::json!({"PreToolUse": "echo hi"})
     );
 }
 

@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use skref::{read_properties, to_prompt, validate};
+use skref::{Options, read_properties_with_options, to_prompt, validate_with_options};
 
 /// Reference library for Agent Skills.
 #[derive(Parser)]
@@ -24,12 +24,22 @@ enum Command {
     Validate {
         /// Path to a skill directory (or directly to its SKILL.md).
         skill_path: PathBuf,
+
+        /// Also accept Claude Code's extra frontmatter fields (model,
+        /// when_to_use, argument-hint, hooks, …) instead of rejecting them.
+        #[arg(long)]
+        allow_claude_fields: bool,
     },
 
     /// Read and print skill properties as JSON.
     ReadProperties {
         /// Path to a skill directory (or directly to its SKILL.md).
         skill_path: PathBuf,
+
+        /// Also include Claude Code's extra frontmatter fields (model,
+        /// when_to_use, argument-hint, hooks, …) in the JSON output.
+        #[arg(long)]
+        allow_claude_fields: bool,
     },
 
     /// Generate `<available_skills>` XML for agent prompts.
@@ -61,9 +71,9 @@ fn resolve_skill_path(path: &Path) -> PathBuf {
     }
 }
 
-fn cmd_validate(skill_path: &Path) -> ExitCode {
+fn cmd_validate(skill_path: &Path, opts: Options) -> ExitCode {
     let skill_path = resolve_skill_path(skill_path);
-    let errors = validate(&skill_path);
+    let errors = validate_with_options(&skill_path, opts);
 
     if errors.is_empty() {
         println!("Valid skill: {}", skill_path.display());
@@ -77,9 +87,9 @@ fn cmd_validate(skill_path: &Path) -> ExitCode {
     }
 }
 
-fn cmd_read_properties(skill_path: &Path) -> ExitCode {
+fn cmd_read_properties(skill_path: &Path, opts: Options) -> ExitCode {
     let skill_path = resolve_skill_path(skill_path);
-    match read_properties(&skill_path) {
+    match read_properties_with_options(&skill_path, opts) {
         Ok(props) => {
             println!("{}", props.to_json());
             ExitCode::SUCCESS
@@ -108,8 +118,24 @@ fn cmd_to_prompt(skill_paths: &[PathBuf]) -> ExitCode {
 fn main() -> ExitCode {
     let cli = Cli::parse();
     match cli.command {
-        Command::Validate { skill_path } => cmd_validate(&skill_path),
-        Command::ReadProperties { skill_path } => cmd_read_properties(&skill_path),
+        Command::Validate {
+            skill_path,
+            allow_claude_fields,
+        } => cmd_validate(
+            &skill_path,
+            Options {
+                allow_claude_fields,
+            },
+        ),
+        Command::ReadProperties {
+            skill_path,
+            allow_claude_fields,
+        } => cmd_read_properties(
+            &skill_path,
+            Options {
+                allow_claude_fields,
+            },
+        ),
         Command::ToPrompt { skill_paths } => cmd_to_prompt(&skill_paths),
     }
 }

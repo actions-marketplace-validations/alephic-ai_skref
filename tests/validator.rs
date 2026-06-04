@@ -1,6 +1,7 @@
 //! Tests for the validator module — ported from `tests/test_validator.py`.
 
 use skref::validator::validate;
+use skref::{Options, validate_with_options};
 use std::fs;
 use tempfile::tempdir;
 
@@ -138,6 +139,55 @@ fn unexpected_fields() {
     );
     let errors = validate(&skill_dir);
     assert!(errors.iter().any(|e| e.contains("Unexpected fields")));
+}
+
+#[test]
+fn claude_fields_rejected_by_default() {
+    let tmp = tempdir().unwrap();
+    let skill_dir = write_skill(
+        tmp.path(),
+        "my-skill",
+        "---\nname: my-skill\ndescription: A test skill\nmodel: inherit\ndisable-model-invocation: true\n---\nBody\n",
+    );
+    let errors = validate(&skill_dir);
+    assert!(errors.iter().any(|e| e.contains("Unexpected fields")));
+}
+
+#[test]
+fn claude_fields_accepted_with_option() {
+    let tmp = tempdir().unwrap();
+    let skill_dir = write_skill(
+        tmp.path(),
+        "my-skill",
+        "---\nname: my-skill\ndescription: A test skill\nmodel: inherit\ndisable-model-invocation: true\nwhen_to_use: when testing\n---\nBody\n",
+    );
+    let opts = Options {
+        allow_claude_fields: true,
+    };
+    assert_eq!(
+        validate_with_options(&skill_dir, opts),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn unknown_field_still_rejected_with_option() {
+    let tmp = tempdir().unwrap();
+    let skill_dir = write_skill(
+        tmp.path(),
+        "my-skill",
+        "---\nname: my-skill\ndescription: A test skill\nmodel: inherit\nbogus: nope\n---\nBody\n",
+    );
+    let opts = Options {
+        allow_claude_fields: true,
+    };
+    let errors = validate_with_options(&skill_dir, opts);
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.contains("Unexpected fields") && e.contains("bogus")),
+        "expected `bogus` to still be rejected, got: {errors:?}"
+    );
 }
 
 #[test]

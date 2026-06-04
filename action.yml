@@ -18,6 +18,10 @@ inputs:
     description: "If 'true', also print the <available_skills> XML block for all valid skills."
     required: false
     default: "false"
+  allow-claude-fields:
+    description: "If 'true', also accept Claude Code's extra frontmatter fields (model, when_to_use, argument-hint, hooks, …) during validation."
+    required: false
+    default: "false"
 
 runs:
   using: "composite"
@@ -109,9 +113,16 @@ runs:
         SCAN_PATH: ${{ inputs.path }}
         FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
         TO_PROMPT: ${{ inputs.to-prompt }}
+        ALLOW_CLAUDE_FIELDS: ${{ inputs.allow-claude-fields }}
       run: |
         export PATH="$HOME/.skref-bin/bin:$PATH"
         set -uo pipefail
+
+        # Optional validate flags, collected as an array so empty stays safe.
+        validate_args=()
+        if [ "$ALLOW_CLAUDE_FIELDS" = "true" ]; then
+          validate_args+=(--allow-claude-fields)
+        fi
 
         # Discover every directory that contains a SKILL.md / skill.md.
         mapfile -t skill_files < <(find "$SCAN_PATH" -iname 'SKILL.md' -type f | sort)
@@ -127,7 +138,8 @@ runs:
 
         for f in "${skill_files[@]}"; do
           dir="$(dirname "$f")"
-          if skref validate "$dir"; then
+          # ${arr[@]+...} guard keeps `set -u` happy when no extra flags are set.
+          if skref validate "$dir" ${validate_args[@]+"${validate_args[@]}"}; then
             valid_dirs+=("$dir")
           else
             echo "::error file=$f::Skill validation failed for $dir"

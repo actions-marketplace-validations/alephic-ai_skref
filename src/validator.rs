@@ -4,6 +4,7 @@ use std::path::Path;
 
 use unicode_normalization::UnicodeNormalization;
 
+use crate::options::Options;
 use crate::parser::{find_skill_md, parse_frontmatter};
 use crate::yaml::{FmValue, Frontmatter};
 
@@ -19,6 +20,27 @@ pub const ALLOWED_FIELDS: [&str; 6] = [
     "allowed-tools",
     "metadata",
     "compatibility",
+];
+
+/// Claude Code's extra frontmatter fields, layered on top of [`ALLOWED_FIELDS`]
+/// when [`Options::allow_claude_fields`] is set. `name`, `description`, and
+/// `allowed-tools` are shared with the base spec and so are not repeated here.
+///
+/// See <https://code.claude.com/docs/en/skills#frontmatter-reference>.
+pub const CLAUDE_FIELDS: [&str; 13] = [
+    "when_to_use",
+    "argument-hint",
+    "arguments",
+    "disable-model-invocation",
+    "user-invocable",
+    "disallowed-tools",
+    "model",
+    "effort",
+    "context",
+    "agent",
+    "hooks",
+    "paths",
+    "shell",
 ];
 
 /// NFKC-normalize a string (matches Python's `unicodedata.normalize("NFKC", ...)`).
@@ -135,17 +157,30 @@ fn validate_compatibility(compatibility: &FmValue) -> Vec<String> {
 }
 
 /// Validate that only allowed fields are present.
-fn validate_metadata_fields(metadata: &Frontmatter) -> Vec<String> {
+///
+/// When `allow_claude_fields` is set, the Claude Code [`CLAUDE_FIELDS`] join the
+/// base [`ALLOWED_FIELDS`] for both the membership check and the error message.
+fn validate_metadata_fields(metadata: &Frontmatter, allow_claude_fields: bool) -> Vec<String> {
     let mut errors = Vec::new();
 
+    let allowed_fields: Vec<&str> = if allow_claude_fields {
+        ALLOWED_FIELDS
+            .iter()
+            .chain(CLAUDE_FIELDS.iter())
+            .copied()
+            .collect()
+    } else {
+        ALLOWED_FIELDS.to_vec()
+    };
+
     let allowed: std::collections::BTreeSet<String> =
-        ALLOWED_FIELDS.iter().map(|s| s.to_string()).collect();
+        allowed_fields.iter().map(|s| s.to_string()).collect();
     let extra: Vec<String> = metadata.keys().difference(&allowed).cloned().collect();
 
     if !extra.is_empty() {
         // `extra` is already sorted (BTreeSet difference yields sorted order).
         let allowed_repr: Vec<String> = {
-            let mut v: Vec<&str> = ALLOWED_FIELDS.to_vec();
+            let mut v = allowed_fields.clone();
             v.sort_unstable();
             v.iter().map(|s| format!("'{s}'")).collect()
         };
@@ -165,8 +200,20 @@ fn validate_metadata_fields(metadata: &Frontmatter) -> Vec<String> {
 /// frontmatter, avoiding duplicate file I/O. Returns the list of validation
 /// error messages; an empty list means valid.
 pub fn validate_metadata(metadata: &Frontmatter, skill_dir: Option<&Path>) -> Vec<String> {
+    validate_metadata_with_options(metadata, skill_dir, Options::default())
+}
+
+/// Validate parsed skill metadata under the given [`Options`].
+///
+/// Like [`validate_metadata`], but [`Options::allow_claude_fields`] additionally
+/// permits Claude Code's [`CLAUDE_FIELDS`].
+pub fn validate_metadata_with_options(
+    metadata: &Frontmatter,
+    skill_dir: Option<&Path>,
+    opts: Options,
+) -> Vec<String> {
     let mut errors = Vec::new();
-    errors.extend(validate_metadata_fields(metadata));
+    errors.extend(validate_metadata_fields(metadata, opts.allow_claude_fields));
 
     match metadata.get("name") {
         None => errors.push("Missing required field in frontmatter: name".to_string()),
@@ -190,6 +237,14 @@ pub fn validate_metadata(metadata: &Frontmatter, skill_dir: Option<&Path>) -> Ve
 /// Returns the list of validation error messages; an empty list means the
 /// skill is valid.
 pub fn validate(skill_dir: &Path) -> Vec<String> {
+    validate_with_options(skill_dir, Options::default())
+}
+
+/// Validate a skill directory under the given [`Options`].
+///
+/// Like [`validate`], but [`Options::allow_claude_fields`] additionally permits
+/// Claude Code's [`CLAUDE_FIELDS`].
+pub fn validate_with_options(skill_dir: &Path, opts: Options) -> Vec<String> {
     if !skill_dir.exists() {
         return vec![format!("Path does not exist: {}", skill_dir.display())];
     }
@@ -209,7 +264,7 @@ pub fn validate(skill_dir: &Path) -> Vec<String> {
     };
 
     match parse_frontmatter(&content) {
-        Ok((metadata, _body)) => validate_metadata(&metadata, Some(skill_dir)),
+        Ok((metadata, _body)) => validate_metadata_with_options(&metadata, Some(skill_dir), opts),
         Err(e) => vec![e.to_string()],
     }
 }

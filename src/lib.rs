@@ -26,6 +26,7 @@
 
 pub mod errors;
 pub mod models;
+pub mod options;
 pub mod parser;
 pub mod prompt;
 pub mod validator;
@@ -33,6 +34,10 @@ pub mod yaml;
 
 pub use errors::{Result, SkillError};
 pub use models::SkillProperties;
-pub use parser::{find_skill_md, parse_frontmatter, read_properties};
+pub use options::Options;
+pub use parser::{find_skill_md, parse_frontmatter, read_properties, read_properties_with_options};
 pub use prompt::to_prompt;
-pub use validator::{validate, validate_metadata};
+pub use validator::{
+    CLAUDE_FIELDS, validate, validate_metadata, validate_metadata_with_options,
+    validate_with_options,
+};

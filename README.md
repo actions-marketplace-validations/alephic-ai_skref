@@ -59,6 +59,20 @@ skref to-prompt path/to/skill-a path/to/skill-b
 
 Exit codes: `0` on success, `1` on validation/parse errors.
 
+#### Claude Code frontmatter fields
+
+[Claude Code](https://code.claude.com/docs/en/skills#frontmatter-reference) layers extra
+frontmatter fields on top of the base spec (`when_to_use`, `argument-hint`, `arguments`,
+`disable-model-invocation`, `user-invocable`, `disallowed-tools`, `model`, `effort`,
+`context`, `agent`, `hooks`, `paths`, `shell`). They are rejected by default. Pass
+`--allow-claude-fields` to accept them in `validate` and surface them in
+`read-properties` output:
+
+```bash
+skref validate path/to/skill --allow-claude-fields
+skref read-properties path/to/skill --allow-claude-fields
+```
+
 ### Examples
 
 ```console
@@ -121,7 +135,7 @@ Validation rules enforced by `skref validate`:
 | `compatibility` | Optional. ≤ 500 chars. |
 | `metadata` | Optional. Key/value mapping. |
 | `license`, `allowed-tools` | Optional. |
-| _other fields_ | Rejected as unexpected. |
+| _other fields_ | Rejected as unexpected (unless `--allow-claude-fields` permits the Claude Code set). |
 
 International (i18n) skill names are supported, e.g. `технологии`, `技能`.
 
@@ -142,7 +156,8 @@ jobs:
         with:
           path: skills        # directory scanned recursively for SKILL.md
           fail-on-error: "true"
-          to-prompt: "false"   # set "true" to also print <available_skills>
+          to-prompt: "false"           # set "true" to also print <available_skills>
+          allow-claude-fields: "false" # set "true" to accept Claude Code frontmatter fields
 ```
 
 Inputs:
@@ -150,6 +165,7 @@ Inputs:
 - `path` (default `.`) — directory scanned recursively; every directory containing a `SKILL.md` is validated.
 - `fail-on-error` (default `true`) — fail the job if any skill is invalid.
 - `to-prompt` (default `false`) — also print the `<available_skills>` block for the valid skills.
+- `allow-claude-fields` (default `false`) — also accept Claude Code's extra frontmatter fields during validation.
 
 See [`.github/workflows/validate-skills.yml`](.github/workflows/validate-skills.yml) for a working example against the bundled samples.
 
