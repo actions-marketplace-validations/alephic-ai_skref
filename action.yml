@@ -152,8 +152,9 @@ runs:
 
         for f in "${skill_files[@]}"; do
           dir="$(dirname "$f")"
-          # ${arr[@]+...} guard keeps `set -u` happy when no extra flags are set.
-          if skref validate "$dir" ${validate_args[@]+"${validate_args[@]}"}; then
+          # An empty array expands to zero arguments here (this step already
+          # requires bash 4+ for `mapfile` above).
+          if skref validate "$dir" "${validate_args[@]}"; then
             valid_dirs+=("$dir")
           else
             echo "::error file=$f::Skill validation failed for $dir"
